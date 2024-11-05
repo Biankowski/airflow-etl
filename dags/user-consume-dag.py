@@ -43,12 +43,20 @@ def init():
 
             engine = pgsql_hook.get_sqlalchemy_engine()
 
+            data.rename(columns={
+                'ClienteID': 'cliente_id',
+                'Nome': 'nome',
+                'Idade': 'idade',
+                'Genero': 'genero',
+                'RendaMensal': 'renda_mensal'
+            }, inplace=True)
+
             data.to_sql(
                 name='dim_cliente',
                 schema='etl',
                 con=engine,
                 if_exists='append',
-                index=False
+                index=False,
             )
 
             return {'status': 'success', 'records_inserted': len(data)}
