@@ -11,3 +11,5 @@ airflow.cfg
 airflow.db
 .idea/
 venv/
+.vscode/
+study-guide.md
