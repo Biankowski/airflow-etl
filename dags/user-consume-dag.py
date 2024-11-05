@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from airflow.decorators import dag, task
 from airflow.operators.empty import EmptyOperator
 from airflow.providers.microsoft.mssql.hooks.mssql import MsSqlHook
-from airflow.providers.postgres.hooks.postgres import PostgresHooks
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 
 SQLSERVER_LOCALHOST='SQLSERVER_LOCALHOST'
@@ -39,7 +39,7 @@ def init():
     @task
     def import_users(data):
         try:
-            pgsql_hook = PostgresHooks(POSTGRES_LOCALHOST)
+            pgsql_hook = PostgresHook(POSTGRES_LOCALHOST)
 
             engine = pgsql_hook.get_sqlalchemy_engine()
 
@@ -55,7 +55,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
 
-    
-    start >> get_users() >> end
+    users_data = get_users()
+    start >> import_users(users_data) >> end
 
 dag = init()
