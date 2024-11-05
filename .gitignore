@@ -13,3 +13,4 @@ airflow.db
 venv/
 .vscode/
 study-guide.md
+.python-version
