@@ -62,8 +62,46 @@ def init():
             return {'status': 'success', 'records_inserted': len(data)}
         except Exception as e:
             return {'error': str(e)}
+        
+    @task
+    def get_places():
+        try:
+            mssql_hook = MsSqlHook(SQLSERVER_LOCALHOST)
+
+            data = mssql_hook.get_pandas_df("select * from [CartaoConsumo].[dbo].[DimEstabelecimento]")
+
+            return data
+        except Exception as e:7
+        return {'error': str(e)}
+    
+    @task
+    def import_places(data):
+        try:
+            pgsql_hook = PostgresHook(POSTGRES_LOCALHOST)
+            engine = pgsql_hook.get_sqlalchemy_engine()
+
+            data.rename(columns={
+                'EstabelecimentoID': 'estabelecimento_id',
+                'Nome': 'nome',
+                'Categoria': 'categoria',
+                'Cidade': 'cidade',
+                'Estado': 'estado'
+            }, inplace=True)
+
+            data.to_sql(
+                name='dim_estabelecimento',
+                schema='etl',
+                con=engine,
+                if_exists='append',
+                index=False
+            )
+
+            return {'status': 'success', 'records_inserted': len(data)}
+        except Exception as e:
+            return {'error': str(e)}
 
     users_data = get_users()
-    start >> import_users(users_data) >> end
+    places_data = get_places()
+    start >> import_users(users_data) >> import_places(places_data) >> end
 
 dag = init()
