@@ -172,11 +172,52 @@ def init():
 
         except Exception as e:
             return {'error': str(e)}
+        
+    @task
+    def get_consume():
+        try:
+            mssql_hook = MsSqlHook(SQLSERVER_LOCALHOST)
+
+            data = mssql_hook.get_pandas_df("select * from [CartaoConsumo].[dbo].[FatoConsumo]")
+
+            return data
+        except Exception as e:
+            return {'error': str(e)}
+        
+    @task
+    def import_consume(data):
+        try:
+            pgsql_data = PostgresHook(POSTGRES_LOCALHOST)
+            engine = pgsql_data.get_sqlalchemy_engine()
+
+            data.rename(columns={
+                'ConsumoID': 'consumo_id',
+                'ClienteID': 'cliente_id',
+                'EstabelecimentoID': 'estabelecimento_id',
+                'TipoTransacaoID': 'tipo_transacao_id',
+                'DataID': 'data_id',
+                'Valor': 'valor'
+            }, inplace=True)
+
+            data.to_sql(
+                name='fato_consumo',
+                schema='etl',
+                con=engine,
+                if_exists='append',
+                index=False
+            )
+
+            return {'status': 'success', 'records_inserted': len(data)}
+        except Exception as e:
+            return {'error': str(e)}
+
+ 
 
     users_data = get_users()
     places_data = get_places()
     transaction_type_data = get_transaction_type()
     date_data = get_date()
-    start >> import_users(users_data) >> import_places(places_data) >> import_transaction_type(transaction_type_data) >> import_date(date_data) >> end
+    consume_data = get_consume()
+    start >> import_users(users_data) >> import_places(places_data) >> import_transaction_type(transaction_type_data) >> import_date(date_data) >> import_consume(consume_data) >> end
 
 dag = init()
