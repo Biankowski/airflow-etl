@@ -2,9 +2,11 @@ from datetime import datetime, timedelta
 from airflow.decorators import dag, task
 from airflow.operators.empty import EmptyOperator
 from airflow.providers.microsoft.mssql.hooks.mssql import MsSqlHook
+from airflow.providers.postgres.hooks.postgres import PostgresHooks
 
 
 SQLSERVER_LOCALHOST='SQLSERVER_LOCALHOST'
+POSTGRES_LOCALHOST='POSTGRES_LOCALHOST'
 
 default_args = {
     'owner': 'rodrigo',
@@ -31,9 +33,28 @@ def init():
             data = mssql_hook.get_pandas_df("select * from [CartaoConsumo].[dbo].[DimCliente]")
 
             return data
-        
         except Exception as e:
             return {'error': str(e)}
+    
+    @task
+    def import_users(data):
+        try:
+            pgsql_hook = PostgresHooks(POSTGRES_LOCALHOST)
+
+            engine = pgsql_hook.get_sqlalchemy_engine()
+
+            data.to_sql(
+                name='dim_cliente',
+                schema='etl',
+                con=engine,
+                if_exists='append',
+                index=False
+            )
+
+            return {'status': 'success', 'records_inserted': len(data)}
+        except Exception as e:
+            return {'error': str(e)}
+
     
     start >> get_users() >> end
 
