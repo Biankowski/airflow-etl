@@ -13,7 +13,7 @@ default_args = {
 }
 
 @dag(
-    dag_id='user-consume-dag',
+    dag_id='user-consume-full-load-dag',
     start_date=datetime(2024, 11, 4),
     max_active_runs=1,
     schedule_interval='@daily',
