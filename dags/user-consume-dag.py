@@ -99,9 +99,45 @@ def init():
             return {'status': 'success', 'records_inserted': len(data)}
         except Exception as e:
             return {'error': str(e)}
+        
+    @task
+    def get_transaction_type():
+        try:
+            mssql_hook = MsSqlHook(SQLSERVER_LOCALHOST)
+
+            data = mssql_hook.get_pandas_df("select * from [CartaoConsumo].[dbo].[DimTipoTransacao]")
+
+            return data
+        except Exception as e:7
+        return {'error': str(e)}
+    
+    @task
+    def import_transaction_type(data):
+        try:
+            pgsql_hook = PostgresHook(POSTGRES_LOCALHOST)
+            engine = pgsql_hook.get_sqlalchemy_engine()
+
+            data.rename(columns={
+                'TipoTransacaoID': 'tipo_transacao_id',
+                'Descricao': 'descricao'
+            }, inplace=True)
+
+            data.to_sql(
+                name='dim_tipo_transacao',
+                schema='etl',
+                con=engine,
+                if_exists='append',
+                index=False
+            )
+
+            return {'status': 'success', 'records_inserted': len(data)}
+        except Exception as e:
+            return {'error': str(e)}
+
 
     users_data = get_users()
     places_data = get_places()
-    start >> import_users(users_data) >> import_places(places_data) >> end
+    transaction_type_data = get_transaction_type()
+    start >> import_users(users_data) >> import_places(places_data) >> import_transaction_type(transaction_type_data) >> end
 
 dag = init()
