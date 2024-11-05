@@ -71,8 +71,8 @@ def init():
             data = mssql_hook.get_pandas_df("select * from [CartaoConsumo].[dbo].[DimEstabelecimento]")
 
             return data
-        except Exception as e:7
-        return {'error': str(e)}
+        except Exception as e:
+            return {'error': str(e)}
     
     @task
     def import_places(data):
@@ -108,8 +108,8 @@ def init():
             data = mssql_hook.get_pandas_df("select * from [CartaoConsumo].[dbo].[DimTipoTransacao]")
 
             return data
-        except Exception as e:7
-        return {'error': str(e)}
+        except Exception as e:
+            return {'error': str(e)}
     
     @task
     def import_transaction_type(data):
@@ -134,10 +134,49 @@ def init():
         except Exception as e:
             return {'error': str(e)}
 
+    @task
+    def get_date():
+        try:
+            mssql_hook = MsSqlHook(SQLSERVER_LOCALHOST)
+
+            data = mssql_hook.get_pandas_df("select * from [CartaoConsumo].[dbo].[DimData]")
+
+            return data
+        except Exception as e:
+            return {'error': str(e)}
+        
+    @task
+    def import_date(data):
+        try:
+            pgsql_hook = PostgresHook(POSTGRES_LOCALHOST)
+            engine = pgsql_hook.get_sqlalchemy_engine()
+
+            data.rename(columns={
+                'DataID': 'data_id',
+                'Data': 'data',
+                'Ano': 'ano',
+                'Mes': 'mes',
+                'Dia': 'dia',
+                'DiaSemana': 'dia_semana'
+            }, inplace=True)
+
+            data.to_sql(
+                name='dim_data',
+                schema='etl',
+                if_exists='append',
+                con=engine,
+                index=False
+            )
+            
+            return {'status': 'success', 'record_inserted': len(data)}
+
+        except Exception as e:
+            return {'error': str(e)}
 
     users_data = get_users()
     places_data = get_places()
     transaction_type_data = get_transaction_type()
-    start >> import_users(users_data) >> import_places(places_data) >> import_transaction_type(transaction_type_data) >> end
+    date_data = get_date()
+    start >> import_users(users_data) >> import_places(places_data) >> import_transaction_type(transaction_type_data) >> import_date(date_data) >> end
 
 dag = init()
