@@ -26,6 +26,18 @@ def init():
     end = EmptyOperator(task_id='end')
 
     @task
+    def clenup_postgres_tables():
+        tables = ['etl.dim_cliente', 'etl.dim_data', 'etl.dim_estabelecimento', 'etl.dim_tipo_transacao', 'etl.fato_consumo']
+        try:
+            pgsql_hook = PostgresHook(POSTGRES_LOCALHOST)
+            for table in tables:
+                pgsql_hook.run(f"TRUNCATE TABLE {table} CASCADE")
+            
+            return {'status': 'success', 'messsage': 'tables were successfully truncated'}
+        except Exception as e:
+            return {'error': str(e)}
+
+    @task
     def get_users():
         try:
             mssql_hook = MsSqlHook(SQLSERVER_LOCALHOST)
@@ -218,6 +230,6 @@ def init():
     transaction_type_data = get_transaction_type()
     date_data = get_date()
     consume_data = get_consume()
-    start >> import_users(users_data) >> import_places(places_data) >> import_transaction_type(transaction_type_data) >> import_date(date_data) >> import_consume(consume_data) >> end
+    start >> clenup_postgres_tables() >> import_users(users_data) >> import_places(places_data) >> import_transaction_type(transaction_type_data) >> import_date(date_data) >> import_consume(consume_data) >> end
 
 dag = init()
