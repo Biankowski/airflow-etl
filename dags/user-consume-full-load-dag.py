@@ -20,7 +20,7 @@ default_args = {
     schedule_interval='@daily',
     catchup=False,
     default_args=default_args,
-    tags=['incremental']
+    tags=['full-load']
 )
 def init():
     start = EmptyOperator(task_id='start')
