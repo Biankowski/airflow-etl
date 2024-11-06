@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-from airflow.decorators import dag, task
+from airflow.decorators import dag, task, task_group
+from airflow.utils.task_group import TaskGroup
 from airflow.operators.empty import EmptyOperator
 from airflow.providers.microsoft.mssql.hooks.mssql import MsSqlHook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
@@ -25,6 +26,12 @@ def init():
     start = EmptyOperator(task_id='start')
     end = EmptyOperator(task_id='end')
 
+    users = TaskGroup('users')
+    places = TaskGroup('places')
+    transaction = TaskGroup('transaction')
+    date = TaskGroup('date')
+    consume = TaskGroup('consume')
+
     @task
     def clenup_postgres_tables():
         tables = ['etl.dim_cliente', 'etl.dim_data', 'etl.dim_estabelecimento', 'etl.dim_tipo_transacao', 'etl.fato_consumo']
@@ -37,7 +44,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
 
-    @task
+    @task(task_id='get_users', task_group=users)
     def get_users():
         try:
             mssql_hook = MsSqlHook(SQLSERVER_LOCALHOST)
@@ -48,7 +55,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
     
-    @task
+    @task(task_id='import_users', task_group=users)
     def import_users(data):
         try:
             pgsql_hook = PostgresHook(POSTGRES_LOCALHOST)
@@ -75,7 +82,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
         
-    @task
+    @task(task_id='get_places', task_group=places)
     def get_places():
         try:
             mssql_hook = MsSqlHook(SQLSERVER_LOCALHOST)
@@ -86,7 +93,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
     
-    @task
+    @task(task_id='import_places', task_group=places)
     def import_places(data):
         try:
             pgsql_hook = PostgresHook(POSTGRES_LOCALHOST)
@@ -112,7 +119,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
         
-    @task
+    @task(task_id='get_transactions', task_group=transaction)
     def get_transaction_type():
         try:
             mssql_hook = MsSqlHook(SQLSERVER_LOCALHOST)
@@ -123,7 +130,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
     
-    @task
+    @task(task_id='import_transactions', task_group=transaction)
     def import_transaction_type(data):
         try:
             pgsql_hook = PostgresHook(POSTGRES_LOCALHOST)
@@ -146,7 +153,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
 
-    @task
+    @task(task_id='get_date', task_group=date)
     def get_date():
         try:
             mssql_hook = MsSqlHook(SQLSERVER_LOCALHOST)
@@ -157,7 +164,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
         
-    @task
+    @task(task_id='import_date', task_group=date)
     def import_date(data):
         try:
             pgsql_hook = PostgresHook(POSTGRES_LOCALHOST)
@@ -185,7 +192,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
         
-    @task
+    @task(task_id='get_consume', task_group=consume)
     def get_consume():
         try:
             mssql_hook = MsSqlHook(SQLSERVER_LOCALHOST)
@@ -196,7 +203,7 @@ def init():
         except Exception as e:
             return {'error': str(e)}
         
-    @task
+    @task(task_id='import_consume', task_group=consume)
     def import_consume(data):
         try:
             pgsql_data = PostgresHook(POSTGRES_LOCALHOST)
